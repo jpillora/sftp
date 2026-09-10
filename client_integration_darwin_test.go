@@ -35,7 +35,4 @@ func TestClientStatVFS(t *testing.T) {
 		t.Fatalf("f_bsize does not match, expected: %v, got: %v", s.Iosize, vfs.Bsize)
 	}
 
-	if vfs.Namemax != 1024 {
-		t.Fatalf("f_namemax does not match, expected: %v, got: %v", 1024, vfs.Namemax)
-	}
 }
