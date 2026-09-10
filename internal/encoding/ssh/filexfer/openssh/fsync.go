@@ -1,7 +1,7 @@
 package openssh
 
 import (
-	sshfx "github.com/pkg/sftp/internal/encoding/ssh/filexfer"
+	sshfx "github.com/jpillora/sftp/internal/encoding/ssh/filexfer"
 )
 
 const extensionFSync = "fsync@openssh.com"

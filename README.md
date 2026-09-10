@@ -1,16 +1,21 @@
 sftp
 ----
 
+This is a maintained, history-preserving fork of
+[`github.com/pkg/sftp`](https://github.com/pkg/sftp). It keeps the public API
+while fixing request-server `FSTAT`/`FSETSTAT` operations to use live file and
+directory handles after rename or unlink.
+
 The `sftp` package provides support for file system operations on remote ssh
 servers using the SFTP subsystem. It also implements an SFTP server for serving
 files from the filesystem.
 
-![CI Status](https://github.com/pkg/sftp/workflows/CI/badge.svg?branch=master&event=push) [![Go Reference](https://pkg.go.dev/badge/github.com/pkg/sftp.svg)](https://pkg.go.dev/github.com/pkg/sftp)
+![CI Status](https://github.com/jpillora/sftp/workflows/CI/badge.svg?branch=master&event=push) [![Go Reference](https://pkg.go.dev/badge/github.com/jpillora/sftp.svg)](https://pkg.go.dev/github.com/jpillora/sftp)
 
 usage and examples
 ------------------
 
-See [https://pkg.go.dev/github.com/pkg/sftp](https://pkg.go.dev/github.com/pkg/sftp) for
+See [https://pkg.go.dev/github.com/jpillora/sftp](https://pkg.go.dev/github.com/jpillora/sftp) for
 examples and usage.
 
 The basic operation of the package mirrors the facilities of the
