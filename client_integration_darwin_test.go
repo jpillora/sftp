@@ -25,16 +25,17 @@ func TestClientStatVFS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// check some stats
-	if vfs.Files != uint64(s.Files) {
-		t.Fatal("fr_size does not match")
+	// Compare stable filesystem properties. Free blocks and inodes can change
+	// between the remote and local statfs calls on a busy system.
+	if vfs.Frsize != uint64(s.Bsize) {
+		t.Fatalf("fr_size does not match, expected: %v, got: %v", s.Bsize, vfs.Frsize)
 	}
 
-	if vfs.Bfree != uint64(s.Bfree) {
-		t.Fatal("f_bsize does not match")
+	if vfs.Bsize != uint64(s.Bsize) {
+		t.Fatalf("f_bsize does not match, expected: %v, got: %v", s.Bsize, vfs.Bsize)
 	}
 
-	if vfs.Favail != uint64(s.Ffree) {
-		t.Fatal("f_namemax does not match")
+	if vfs.Namemax != 1024 {
+		t.Fatalf("f_namemax does not match, expected: %v, got: %v", 1024, vfs.Namemax)
 	}
 }
