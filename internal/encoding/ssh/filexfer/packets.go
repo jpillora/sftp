@@ -138,7 +138,7 @@ func readPacket(r io.Reader, b []byte, maxPacketLength uint32) ([]byte, error) {
 	return b[:n], err
 }
 
-// ReadFrom provides a simple functional packet reader,
+// ReadFromWithBuffer provides a simple functional packet reader,
 // using the given byte slice as a backing array.
 //
 // To protect against potential denial of service attacks,
@@ -154,7 +154,7 @@ func readPacket(r io.Reader, b []byte, maxPacketLength uint32) ([]byte, error) {
 //
 // The Data field may alias the passed in byte slice,
 // so the byte slice passed in should not be reused before RawPacket.Reset().
-func (p *RawPacket) ReadFrom(r io.Reader, b []byte, maxPacketLength uint32) error {
+func (p *RawPacket) ReadFromWithBuffer(r io.Reader, b []byte, maxPacketLength uint32) error {
 	b, err := readPacket(r, b, maxPacketLength)
 	if err != nil {
 		return err
@@ -247,7 +247,7 @@ func (p *RequestPacket) UnmarshalBinary(data []byte) error {
 	return p.UnmarshalFrom(NewBuffer(clone[:n]))
 }
 
-// ReadFrom provides a simple functional packet reader,
+// ReadFromWithBuffer provides a simple functional packet reader,
 // using the given byte slice as a backing array.
 //
 // To protect against potential denial of service attacks,
@@ -263,7 +263,7 @@ func (p *RequestPacket) UnmarshalBinary(data []byte) error {
 //
 // The Request field may alias the passed in byte slice,
 // so the byte slice passed in should not be reused before RawPacket.Reset().
-func (p *RequestPacket) ReadFrom(r io.Reader, b []byte, maxPacketLength uint32) error {
+func (p *RequestPacket) ReadFromWithBuffer(r io.Reader, b []byte, maxPacketLength uint32) error {
 	b, err := readPacket(r, b, maxPacketLength)
 	if err != nil {
 		return err
