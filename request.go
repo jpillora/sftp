@@ -90,6 +90,29 @@ func (s *state) getAllReaderWriters() (io.ReaderAt, io.WriterAt, WriterAtReaderA
 	return s.readerAt, s.writerAt, s.writerAtReaderAt
 }
 
+// openObject returns the object retained for an open file handle. A request
+// stores the object in exactly one of these fields according to the open mode.
+// Prefer the combined reader/writer so metadata operations use the same live
+// object as both data paths.
+func (s *state) openObject() any {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.writerAtReaderAt != nil {
+		return s.writerAtReaderAt
+	}
+	if s.writerAt != nil {
+		return s.writerAt
+	}
+	if s.readerAt != nil {
+		return s.readerAt
+	}
+	if s.listerAt != nil {
+		return s.listerAt
+	}
+	return nil
+}
+
 // Returns current offset for file list
 func (s *state) lsNext() int64 {
 	s.mu.RLock()

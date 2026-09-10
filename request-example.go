@@ -577,6 +577,8 @@ func (f *memFile) Sys() any {
 	return fakeFileInfoSys()
 }
 
+func (f *memFile) Stat() (os.FileInfo, error) { return f, nil }
+
 func (f *memFile) ReadAt(b []byte, off int64) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

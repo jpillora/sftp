@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
-	"time"
 )
 
 const (
@@ -577,9 +576,7 @@ func (p *sshFxpFsetstatPacket) respond(svr *Server) responsePacket {
 		return statusFromError(p.ID, EBADF)
 	}
 
-	path := f.Name()
-
-	debug("fsetstat name %q", path)
+	debug("fsetstat name %q", f.Name())
 
 	fs, err := p.unmarshalFileStat(p.Flags)
 
@@ -593,17 +590,10 @@ func (p *sshFxpFsetstatPacket) respond(svr *Server) responsePacket {
 		err = f.Chown(int(fs.UID), int(fs.GID))
 	}
 	if err == nil && (p.Flags&sshFileXferAttrACmodTime) != 0 {
-		type chtimer interface {
-			Chtimes(atime, mtime time.Time) error
-		}
-
-		switch f := any(f).(type) {
-		case chtimer:
-			// future-compatible, for when/if *os.File supports Chtimes.
-			err = f.Chtimes(fs.AccessTime(), fs.ModTime())
-		default:
-			err = os.Chtimes(path, fs.AccessTime(), fs.ModTime())
-		}
+		err = setOpenFileTimes(f, fs.AccessTime(), fs.ModTime())
+	}
+	if errors.Is(err, errors.ErrUnsupported) {
+		err = ErrSSHFxOpUnsupported
 	}
 
 	return statusFromError(p.ID, err)
