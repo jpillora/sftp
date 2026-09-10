@@ -1,4 +1,4 @@
-//go:build !aix && !darwin && !dragonfly && !freebsd && !linux && !netbsd && !openbsd && !solaris && !windows && !zos
+//go:build !darwin && !dragonfly && !freebsd && !linux && !netbsd && !openbsd && !solaris && !windows && !zos
 
 package sftp
 
@@ -14,4 +14,11 @@ func setOpenFileTimes(file any, atime, mtime time.Time) error {
 		return operation.Chtimes(atime, mtime)
 	}
 	return errors.ErrUnsupported
+}
+
+func supportsOpenFileTimes(file any) bool {
+	_, ok := file.(interface {
+		Chtimes(time.Time, time.Time) error
+	})
+	return ok
 }

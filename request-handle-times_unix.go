@@ -1,4 +1,4 @@
-//go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || zos
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || zos
 
 package sftp
 
@@ -24,4 +24,14 @@ func setOpenFileTimes(file any, atime, mtime time.Time) error {
 		unix.NsecToTimeval(mtime.UnixNano()),
 	}
 	return unix.Futimes(int(descriptor.Fd()), times)
+}
+
+func supportsOpenFileTimes(file any) bool {
+	if _, ok := file.(interface {
+		Chtimes(time.Time, time.Time) error
+	}); ok {
+		return true
+	}
+	_, ok := file.(interface{ Fd() uintptr })
+	return ok
 }

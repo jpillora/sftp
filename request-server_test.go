@@ -1,6 +1,7 @@
 package sftp
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -520,6 +522,70 @@ func TestRequestFsetstat(t *testing.T) {
 	assert.Equal(t, 5, n)
 	assert.Equal(t, []byte{'h', 'e', 0, 0, 0}, contents[0:n])
 	checkRequestServerAllocator(t, p)
+}
+
+type legacyMetadataHandler struct {
+	mu        sync.Mutex
+	listCalls int
+	cmdCalls  int
+	cmd       *Request
+}
+
+func (*legacyMetadataHandler) Fileread(*Request) (io.ReaderAt, error) {
+	return bytes.NewReader([]byte("legacy")), nil
+}
+
+func (*legacyMetadataHandler) Filewrite(*Request) (io.WriterAt, error) {
+	return &fakefile{}, nil
+}
+
+func (h *legacyMetadataHandler) Filecmd(r *Request) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cmdCalls++
+	h.cmd = r.copy()
+	return nil
+}
+
+func (h *legacyMetadataHandler) Filelist(*Request) (ListerAt, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.listCalls++
+	return listerat([]os.FileInfo{staticFileInfo{}}), nil
+}
+
+func (h *legacyMetadataHandler) calls() (int, int, *Request) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.listCalls, h.cmdCalls, h.cmd
+}
+
+func TestRequestHandleMetadataFallsBackToHandlers(t *testing.T) {
+	handler := &legacyMetadataHandler{}
+	handlers := Handlers{handler, handler, handler, handler}
+	p := clientRequestServerPairWithHandlers(t, handlers)
+	defer p.Close()
+
+	reader, err := p.cli.Open("/legacy")
+	require.NoError(t, err)
+	info, err := reader.Stat()
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+	listCalls, _, _ := handler.calls()
+	assert.Equal(t, 1, listCalls)
+	require.NoError(t, reader.Close())
+
+	writer, err := p.cli.OpenFile("/legacy", os.O_WRONLY)
+	require.NoError(t, err)
+	require.NoError(t, writer.Chmod(0o640))
+	_, cmdCalls, cmd := handler.calls()
+	assert.Equal(t, 1, cmdCalls)
+	if assert.NotNil(t, cmd) {
+		assert.Equal(t, "Setstat", cmd.Method)
+		assert.Equal(t, "/legacy", cmd.Filepath)
+		assert.True(t, cmd.AttrFlags().Permissions)
+	}
+	require.NoError(t, writer.Close())
 }
 
 func TestRequestStatFail(t *testing.T) {

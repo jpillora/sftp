@@ -27,24 +27,63 @@ func (staticFileInfo) ModTime() time.Time { return time.Unix(1, 0) }
 func (staticFileInfo) IsDir() bool        { return true }
 func (staticFileInfo) Sys() any           { return nil }
 
+type truncateOnlyFile struct {
+	metadataLister
+	truncates int
+}
+
+func (*truncateOnlyFile) WriteAt([]byte, int64) (int, error) { return 0, nil }
+func (f *truncateOnlyFile) Truncate(int64) error {
+	f.truncates++
+	return nil
+}
+
 func TestDirectoryHandleMetadataUsesListerObject(t *testing.T) {
 	lister := &metadataLister{}
 	request := &Request{}
 	request.setListerAt(lister)
 
-	response := request.fstat(&sshFxpFstatPacket{ID: 1})
+	response, handled := request.fstat(&sshFxpFstatPacket{ID: 1})
+	if !handled {
+		t.Fatal("FSTAT was not handled through the directory object")
+	}
 	stat, ok := response.(*sshFxpStatResponse)
 	if !ok || !stat.info.IsDir() {
 		t.Fatalf("FSTAT response = %#v", response)
 	}
 
-	response = request.fsetstat(&sshFxpFsetstatPacket{
+	response, handled = request.fsetstat(&sshFxpFsetstatPacket{
 		ID:    2,
 		Flags: sshFileXferAttrPermissions,
 		Attrs: &FileStat{Mode: fromFileMode(0o710)},
 	})
+	if !handled {
+		t.Fatal("FSETSTAT was not handled through the directory object")
+	}
 	status, ok := response.(*sshFxpStatusPacket)
 	if !ok || status.Code != sshFxOk || lister.mode.Perm() != 0o710 {
 		t.Fatalf("FSETSTAT response = %#v, chmod = %v", response, lister.mode)
+	}
+}
+
+func TestPartialHandleMetadataSupportDoesNotFallBackOrMutate(t *testing.T) {
+	file := &truncateOnlyFile{}
+	request := &Request{}
+	request.setWriterAt(file)
+
+	response, handled := request.fsetstat(&sshFxpFsetstatPacket{
+		ID:    3,
+		Flags: sshFileXferAttrSize | sshFileXferAttrUIDGID,
+		Attrs: &FileStat{Size: 5, UID: 1, GID: 1},
+	})
+	if !handled {
+		t.Fatal("partial live-object support must not fall back to a pathname")
+	}
+	status, ok := response.(*sshFxpStatusPacket)
+	if !ok || status.Code != sshFxOPUnsupported {
+		t.Fatalf("FSETSTAT response = %#v", response)
+	}
+	if file.truncates != 0 {
+		t.Fatalf("partial FSETSTAT mutated the live object %d times", file.truncates)
 	}
 }

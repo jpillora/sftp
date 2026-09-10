@@ -23,3 +23,13 @@ func setOpenFileTimes(file any, atime, mtime time.Time) error {
 	write := windows.NsecToFiletime(mtime.UnixNano())
 	return windows.SetFileTime(windows.Handle(descriptor.Fd()), nil, &access, &write)
 }
+
+func supportsOpenFileTimes(file any) bool {
+	if _, ok := file.(interface {
+		Chtimes(time.Time, time.Time) error
+	}); ok {
+		return true
+	}
+	_, ok := file.(interface{ Fd() uintptr })
+	return ok
+}
